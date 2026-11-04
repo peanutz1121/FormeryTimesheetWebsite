@@ -1,0 +1,44 @@
+{% extends "base.html" %}
+{% load ts_extras %}
+{% block title %}Time in Lieu{% endblock %}
+{% block page_title %}Time in Lieu{% endblock %}
+{% block page_subtitle %}<p class="muted">Banked hours for every active staff member and employee &middot; {{ total_balance|hrs }} h banked in total</p>{% endblock %}
+
+{% block page_actions %}<a class="btn btn-ghost" href="{% url 'til_requests' %}">Requests{% if til_pending_count %} ({{ til_pending_count }} pending){% endif %}</a>{% endblock %}
+
+{% block content %}
+<form method="get" class="card filters" role="search">
+  <div class="filter-grid">
+    <div class="field field-wide"><label for="q">Search</label><input type="text" id="q" name="q" value="{{ q }}" placeholder="Name, username or employee ID"></div>
+  </div>
+  <div class="filter-actions">
+    <button class="btn btn-primary" type="submit">Search</button>
+    {% if q %}<a class="btn btn-ghost" href="{% url 'til_overview' %}">Clear</a>{% endif %}
+  </div>
+</form>
+
+<section class="card">
+  {% if people %}
+  <div class="table-wrap">
+    <table class="table">
+      <thead><tr><th>Employee ID</th><th>Name</th><th>Role</th><th class="num">Earned</th><th class="num">Used</th><th class="num">Balance</th><th>Actions</th></tr></thead>
+      <tbody>
+      {% for p in people %}
+      <tr>
+        <td>{{ p.profile.employee_id }}</td>
+        <td><a href="{% url 'til_ledger' p.pk %}"><strong>{{ p|person }}</strong></a></td>
+        <td class="muted small">{% if p.is_staff or p.is_superuser %}Staff (administrator){% else %}Employee{% endif %}</td>
+        <td class="num">{{ p.til_earned|hrs }}</td>
+        <td class="num">{{ p.til_used|hrs }}</td>
+        <td class="num"><strong>{{ p.til_balance|hrs }}</strong></td>
+        <td class="row-actions"><a class="btn btn-ghost btn-sm" href="{% url 'til_ledger' p.pk %}">Ledger / add</a></td>
+      </tr>
+      {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% else %}
+  <div class="empty"><p><strong>No one matches.</strong></p></div>
+  {% endif %}
+</section>
+{% endblock %}

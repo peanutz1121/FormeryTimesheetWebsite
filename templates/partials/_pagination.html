@@ -1,0 +1,14 @@
+{% load ts_extras %}
+{% if page.paginator.num_pages > 1 %}
+<nav class="pagination" aria-label="Pagination">
+  {% if page.has_previous %}
+    <a class="btn btn-ghost btn-sm" href="?{% qs_replace page=1 %}">First</a>
+    <a class="btn btn-ghost btn-sm" href="?{% qs_replace page=page.previous_page_number %}">Previous</a>
+  {% endif %}
+  <span class="pagination-status">Page {{ page.number }} of {{ page.paginator.num_pages }} &middot; {{ page.paginator.count }} record{{ page.paginator.count|pluralize }}</span>
+  {% if page.has_next %}
+    <a class="btn btn-ghost btn-sm" href="?{% qs_replace page=page.next_page_number %}">Next</a>
+    <a class="btn btn-ghost btn-sm" href="?{% qs_replace page=page.paginator.num_pages %}">Last</a>
+  {% endif %}
+</nav>
+{% endif %}

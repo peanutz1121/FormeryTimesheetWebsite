@@ -1,0 +1,102 @@
+{% extends "base.html" %}
+{% load ts_extras %}
+{% block title %}{{ employee|person }}{% endblock %}
+{% block page_title %}{{ employee|person }}{% endblock %}
+{% block page_subtitle %}<p class="muted">{{ profile.employee_id }} &middot; {{ employee.username }}</p>{% endblock %}
+{% block page_actions %}
+  <a class="btn btn-ghost" href="{% url 'timesheet_list' %}?employee={{ employee.pk }}">View timesheets</a>
+  <a class="btn btn-ghost" href="{% url 'reports' %}?employee={{ employee.pk }}">Work-history report</a>
+  <a class="btn btn-primary" href="{% url 'employee_edit' employee.pk %}">Edit</a>
+{% endblock %}
+
+{% block content %}
+<section class="stat-grid" aria-label="Employee summary">
+  <article class="stat"><p class="stat-label">Total hours</p><p class="stat-value">{{ total_hours|hrs }}</p></article>
+  <article class="stat"><p class="stat-label">Overtime hours</p><p class="stat-value">{{ employee.total_overtime|hrs }}</p></article>
+  <article class="stat"><p class="stat-label">Approved hours</p><p class="stat-value">{{ approved_hours|hrs }}</p></article>
+  <article class="stat"><p class="stat-label">Entries</p><p class="stat-value">{{ employee.entry_count }}</p></article>
+</section>
+
+<div class="detail-layout">
+  <div>
+    <section class="card">
+      <div class="card-head"><h2 class="serif">Profile</h2>
+        {% if employee.is_active %}<span class="badge badge-approved">Active</span>{% else %}<span class="badge badge-draft">Deactivated</span>{% endif %}</div>
+      <dl class="detail-list">
+        <div><dt>First name</dt><dd>{{ employee.first_name|default:"-" }}</dd></div>
+        <div><dt>Last name</dt><dd>{{ employee.last_name|default:"-" }}</dd></div>
+        <div><dt>Username</dt><dd>{{ employee.username }}</dd></div>
+        <div><dt>Email</dt><dd>{{ employee.email|default:"-" }}</dd></div>
+        <div><dt>Employee ID</dt><dd>{{ profile.employee_id }}</dd></div>
+        <div><dt>Department</dt><dd>{{ profile.department|default:"-" }}</dd></div>
+        <div><dt>Job title</dt><dd>{{ profile.job_title|default:"-" }}</dd></div>
+        <div><dt>Role</dt><dd>{% if employee.is_staff or employee.is_superuser %}Administrator{% else %}Employee{% endif %}</dd></div>
+        <div><dt>Account created</dt><dd>{{ employee.date_joined|date:"j M Y" }}</dd></div>
+        <div><dt>Last sign-in</dt><dd>{% if employee.last_login %}{{ employee.last_login|date:"j M Y, H:i" }}{% else %}Never{% endif %}</dd></div>
+      </dl>
+    </section>
+
+    <section class="card">
+      <div class="card-head"><h2 class="serif">Recent timesheets</h2><a class="link" href="{% url 'timesheet_list' %}?employee={{ employee.pk }}">See all</a></div>
+      {% if recent %}
+      <div class="table-wrap"><table class="table">
+        <thead><tr><th>Work date</th><th>Project</th><th class="num">Regular</th><th class="num">Overtime</th><th>Status</th><th></th></tr></thead>
+        <tbody>{% for e in recent %}
+          <tr><td>{{ e.work_date|date:"j M Y" }}</td><td>{{ e.project_label|default:"-" }}</td>
+          <td class="num">{{ e.regular_hours|hrs }}</td><td class="num">{{ e.overtime_hours|hrs }}</td>
+          <td>{% status_badge e.status %}</td>
+          <td class="row-actions"><a class="btn btn-ghost btn-sm" href="{% url 'timesheet_detail' e.pk %}">View</a></td></tr>
+        {% endfor %}</tbody></table></div>
+      {% else %}<p class="empty-inline">No timesheets recorded for this employee.</p>{% endif %}
+    </section>
+  </div>
+
+  <aside>
+    <section class="card">
+      <h2 class="serif">Time in lieu</h2>
+      <p class="stat-value">{{ til_balance|hrs }} h</p>
+      <p class="muted small">Banked balance</p>
+      <a class="btn btn-ghost btn-sm" href="{% url 'til_ledger' employee.pk %}">View ledger</a>
+    </section>
+
+    <section class="card">
+      <h2 class="serif">Access</h2>
+      <p class="muted small">Projects and sections this person can use.</p>
+      <a class="btn btn-ghost btn-sm" href="{% url 'access_edit' employee.pk %}">Manage access</a>
+    </section>
+
+    <section class="card">
+      <h2 class="serif">Entries by status</h2>
+      <ul class="legend">
+        {% for label, value, n in status_counts %}<li><span class="dot seg-{{ value }}"></span><span>{{ label }}</span><strong>{{ n }}</strong></li>{% endfor %}
+      </ul>
+    </section>
+
+    <section class="card">
+      <h2 class="serif">Account access</h2>
+      {% if is_self %}
+        <p class="muted small">You cannot deactivate your own account.</p>
+      {% elif employee.is_active %}
+        <p class="muted small">Deactivating blocks sign-in immediately. All timesheet records are kept.</p>
+        <form method="post" action="{% url 'employee_toggle_active' employee.pk %}" data-confirm="Deactivate this account? They will no longer be able to sign in.">
+          {% csrf_token %}<button type="submit" class="btn btn-danger-outline btn-block">Deactivate account</button>
+        </form>
+      {% else %}
+        <p class="muted small">This account cannot sign in.</p>
+        <form method="post" action="{% url 'employee_toggle_active' employee.pk %}" data-confirm="Reactivate this account?">
+          {% csrf_token %}<button type="submit" class="btn btn-primary btn-block">Reactivate account</button>
+        </form>
+      {% endif %}
+    </section>
+
+    {% if audit %}
+    <section class="card">
+      <h2 class="serif">Account activity</h2>
+      <ul class="activity-list compact">
+        {% for log in audit %}<li><span class="activity-time">{{ log.timestamp|date:"j M, H:i" }}</span><span>{{ log.get_action_display }}</span></li>{% endfor %}
+      </ul>
+    </section>
+    {% endif %}
+  </aside>
+</div>
+{% endblock %}

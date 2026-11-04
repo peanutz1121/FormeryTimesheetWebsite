@@ -1,0 +1,18 @@
+{# Approve / reject controls. Expects: entry, next_url (optional). Both are POST + CSRF. #}
+<div class="review-actions">
+  <form method="post" action="{% url 'timesheet_approve' entry.pk %}" data-confirm="Approve this timesheet?">
+    {% csrf_token %}
+    {% if next_url %}<input type="hidden" name="next" value="{{ next_url }}">{% endif %}
+    <button type="submit" class="btn btn-primary btn-sm">Approve</button>
+  </form>
+  <details class="reject-box">
+    <summary class="btn btn-danger-outline btn-sm">Reject&hellip;</summary>
+    <form method="post" action="{% url 'timesheet_reject' entry.pk %}" class="reject-form">
+      {% csrf_token %}
+      {% if next_url %}<input type="hidden" name="next" value="{{ next_url }}">{% endif %}
+      <label for="reason-{{ entry.pk }}" class="sr-only">Rejection reason</label>
+      <input type="text" id="reason-{{ entry.pk }}" name="comment" maxlength="500" placeholder="Reason (optional) so the employee knows what to fix">
+      <button type="submit" class="btn btn-danger btn-sm">Confirm rejection</button>
+    </form>
+  </details>
+</div>

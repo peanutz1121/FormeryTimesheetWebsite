@@ -1,0 +1,52 @@
+{% extends "base.html" %}
+{% load ts_extras %}
+{% block title %}Time in Lieu requests{% endblock %}
+{% block page_title %}Time in Lieu requests{% endblock %}
+{% block page_subtitle %}<p class="muted">{{ pending_total }} request{{ pending_total|pluralize }} waiting for approval</p>{% endblock %}
+{% block page_actions %}<a class="btn btn-ghost" href="{% url 'til_overview' %}">All staff</a>{% endblock %}
+
+{% block content %}
+<nav class="card filters" aria-label="Filter requests">
+  <div class="filter-actions">
+    {% for value, label in statuses %}<a class="btn {% if status == value %}btn-primary{% else %}btn-ghost{% endif %}" href="?status={{ value }}">{{ label }}</a>{% endfor %}
+    <a class="btn {% if status == 'all' %}btn-primary{% else %}btn-ghost{% endif %}" href="?status=all">All</a>
+  </div>
+</nav>
+
+<section class="card">
+  {% if requests_list %}
+  <div class="table-wrap">
+    <table class="table">
+      <thead><tr><th>Requested</th><th>Employee</th><th>Date</th><th>Type</th><th class="num">Hours</th><th>Reason</th><th>Status</th><th>Decision</th><th>Action</th></tr></thead>
+      <tbody>
+      {% for r in requests_list %}
+      <tr>
+        <td class="muted small">{{ r.created_at|date:"j M Y, g:i a" }}</td>
+        <td><a href="{% url 'til_ledger' r.employee.pk %}"><strong>{{ r.employee|person }}</strong></a></td>
+        <td>{{ r.work_date|date:"j M Y" }}</td>
+        <td>{{ r.get_kind_display }}</td>
+        <td class="num">{% if r.kind == "taken" %}-{% else %}+{% endif %}{{ r.hours|hrs }}</td>
+        <td>{{ r.reason }}</td>
+        <td><span class="badge badge-{{ r.status }}">{{ r.get_status_display }}</span></td>
+        <td class="muted small">{% if r.reviewed_by %}{{ r.reviewed_by|person }}, {{ r.reviewed_at|date:"j M Y" }}{% if r.review_comment %}<br>{{ r.review_comment }}{% endif %}{% else %}-{% endif %}</td>
+        <td class="row-actions">
+          {% if r.status == "pending" %}
+            {% if r.employee_id == request.user.pk %}
+            <span class="muted small">Another administrator must review your own request</span>
+            {% else %}
+            <form method="post" action="{% url 'til_request_approve' r.pk %}">{% csrf_token %}<input type="hidden" name="next" value="{{ request.get_full_path }}"><button type="submit" class="btn btn-primary btn-sm">Approve</button></form>
+            <form method="post" action="{% url 'til_request_reject' r.pk %}" data-confirm="Reject this request?">{% csrf_token %}<input type="hidden" name="next" value="{{ request.get_full_path }}"><input type="text" name="comment" maxlength="300" placeholder="Reason (optional)" aria-label="Reason for rejecting"><button type="submit" class="btn btn-danger-outline btn-sm">Reject</button></form>
+            {% endif %}
+          {% endif %}
+        </td>
+      </tr>
+      {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% include "partials/_pagination.html" %}
+  {% else %}
+  <div class="empty"><p><strong>{% if status == "pending" %}Nothing is waiting for approval.{% else %}No requests found.{% endif %}</strong></p></div>
+  {% endif %}
+</section>
+{% endblock %}

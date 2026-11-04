@@ -1,0 +1,58 @@
+{% extends "base.html" %}
+{% load ts_extras %}
+{% block title %}Projects{% endblock %}
+{% block page_title %}Projects{% endblock %}
+{% block page_subtitle %}<p class="muted">{{ page.paginator.count }} project{{ page.paginator.count|pluralize }}</p>{% endblock %}
+{% block page_actions %}
+  <a class="btn btn-ghost" href="{% url 'admin:timesheets_project_changelist' %}">Open in Django Admin</a>
+  <a class="btn btn-primary" href="{% url 'project_create' %}">Add project</a>
+{% endblock %}
+
+{% block content %}
+<form method="get" class="card filters" role="search">
+  <div class="filter-grid">
+    <div class="field field-wide"><label for="q">Search</label><input type="text" id="q" name="q" value="{{ q }}" placeholder="Project name or code"></div>
+    <div class="field"><label for="status">Stage Status</label>
+      <select id="status" name="status"><option value="">All stages</option>
+      {% for value, label in status_choices %}<option value="{{ value }}" {% if value == status %}selected{% endif %}>{{ label }}</option>{% endfor %}</select></div>
+  </div>
+  <div class="filter-actions">
+    <button class="btn btn-primary" type="submit">Apply filters</button>
+    {% if filtered %}<a class="btn btn-ghost" href="{% url 'project_list' %}">Clear</a>{% endif %}
+  </div>
+</form>
+
+<section class="card">
+  {% if projects %}
+  <div class="table-wrap">
+    <table class="table">
+      <thead><tr>
+        <th>Code</th><th>Project</th><th>Section</th><th>Stage Status</th><th>Dates</th>
+        <th class="num">Entries</th><th class="num">Total hrs</th><th>Actions</th>
+      </tr></thead>
+      <tbody>
+      {% for p in projects %}
+      <tr>
+        <td>{{ p.code }}</td>
+        <td><a href="{% url 'project_edit' p.pk %}"><strong>{{ p.name }}</strong></a></td>
+        <td class="muted small">{{ p.get_section_display }}</td>
+        <td><span class="badge badge-source">{{ p.get_status_display }}</span></td>
+        <td class="muted small">{% if p.start_date %}{{ p.start_date|date:"j M Y" }}{% else %}-{% endif %} &rarr; {% if p.end_date %}{{ p.end_date|date:"j M Y" }}{% else %}open{% endif %}</td>
+        <td class="num">{{ p.entry_count }}</td>
+        <td class="num">{{ p.total_hours|hrs }}</td>
+        <td class="row-actions">
+          <a class="btn btn-ghost btn-sm" href="{% url 'timesheet_list' %}?project={{ p.pk }}">Timesheets</a>
+          <a class="btn btn-ghost btn-sm" href="{% url 'project_edit' p.pk %}">Edit</a>
+        </td>
+      </tr>
+      {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% include "partials/_pagination.html" %}
+  {% else %}
+  <div class="empty"><p><strong>No projects match.</strong></p>
+    {% if filtered %}<a class="btn btn-ghost" href="{% url 'project_list' %}">Clear filters</a>{% else %}<a class="btn btn-primary" href="{% url 'project_create' %}">Add the first project</a>{% endif %}</div>
+  {% endif %}
+</section>
+{% endblock %}

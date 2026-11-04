@@ -1,0 +1,127 @@
+{% extends "base.html" %}
+{% load ts_extras %}
+{% block title %}Timesheet {{ entry.work_date|date:"j M Y" }}{% endblock %}
+{% block page_title %}Timesheet details{% endblock %}
+{% block page_subtitle %}<p class="muted">{{ entry.employee_name }} &middot; {{ entry.work_date|date:"l j F Y" }}</p>{% endblock %}
+{% block page_actions %}
+  <a class="btn btn-ghost" href="{% url 'timesheet_list' %}">Back to list</a>
+  {% if can_edit %}<a class="btn btn-ghost" href="{% url 'timesheet_edit' entry.pk %}">Edit</a>{% endif %}
+  {% if can_delete %}<a class="btn btn-danger-outline" href="{% url 'timesheet_delete' entry.pk %}">Delete</a>{% endif %}
+{% endblock %}
+
+{% block content %}
+<div class="detail-layout">
+  <div>
+    <section class="card">
+      <div class="card-head">
+        <h2 class="serif">{{ entry.project_label|default:"No project" }}</h2>
+        {% status_badge entry.status %}
+      </div>
+      <dl class="detail-list">
+        <div><dt>Employee</dt><dd>{% if is_admin_user %}<a href="{% url 'employee_detail' entry.employee_id %}">{{ entry.employee_name }}</a>{% else %}{{ entry.employee_name }}{% endif %}</dd></div>
+        <div><dt>Employee ID</dt><dd>{{ entry.employee_code|default:"-" }}</dd></div>
+        <div><dt>Work date</dt><dd>{{ entry.work_date|date:"l j F Y" }}</dd></div>
+        <div><dt>Project</dt><dd>{{ entry.project_label|default:"-" }}{% if entry.project %} <span class="muted">({{ entry.project.code }})</span>{% endif %}</dd></div>
+        <div><dt>Work location</dt><dd>{{ entry.work_location|default:"-" }}</dd></div>
+        <div class="wide"><dt>Task / activity</dt><dd class="prewrap">{{ entry.task_description }}</dd></div>
+        <div class="wide"><dt>Notes</dt><dd class="prewrap">{{ entry.notes|default:"-" }}</dd></div>
+      </dl>
+    </section>
+
+    <section class="card">
+      <div class="card-head"><h2 class="serif">Time and hours</h2><span class="badge badge-source">{{ entry.get_hours_source_display }}</span></div>
+      <dl class="detail-list">
+        <div><dt>Time in</dt><dd>{% if entry.time_in %}{{ entry.time_in|time:"H:i" }}{% else %}-{% endif %}</dd></div>
+        <div><dt>Time out</dt><dd>{% if entry.time_out %}{{ entry.time_out|time:"H:i" }}{% else %}-{% endif %}</dd></div>
+        <div><dt>Unpaid break</dt><dd>{{ entry.break_minutes }} min</dd></div>
+        <div><dt>Regular hours</dt><dd>{{ entry.regular_hours|hrs }}</dd></div>
+        <div><dt>Overtime hours</dt><dd>{{ entry.overtime_hours|hrs }}</dd></div>
+        <div><dt>Total hours</dt><dd><strong>{{ entry.total_hours|hrs }}</strong></dd></div>
+      </dl>
+      {% if entry.differs_from_times %}
+      <p class="hours-note">The times entered imply <strong>{{ entry.calculated_total|hrs }}</strong> hours, but <strong>{{ entry.total_hours|hrs }}</strong> hours were recorded manually. The recorded value is the one counted in totals.</p>
+      {% endif %}
+    </section>
+
+    <section class="card">
+      <div class="card-head"><h2 class="serif">Approval history</h2></div>
+      {% if entry.status == 'rejected' and entry.rejection_reason %}
+      <div class="form-alert"><strong>Rejected:</strong> {{ entry.rejection_reason }}</div>
+      {% endif %}
+      {% if history %}
+      <ol class="timeline">
+        {% for h in history %}
+        <li>
+          <span class="timeline-dot seg-{{ h.new_status }}"></span>
+          <div>
+            <p><strong>{{ h.previous_status|default:"new"|title }}</strong> &rarr; <strong>{{ h.get_new_status_display }}</strong>
+              <span class="muted">by {{ h.reviewer|person }}</span></p>
+            <p class="muted small">{{ h.acted_at|date:"j M Y, H:i" }}</p>
+            {% if h.comments %}<p class="small">{{ h.comments }}</p>{% endif %}
+          </div>
+        </li>
+        {% endfor %}
+      </ol>
+      {% else %}<p class="empty-inline">No status changes yet. This entry is still a draft.</p>{% endif %}
+    </section>
+  </div>
+
+  <aside>
+    <section class="card">
+      <h2 class="serif">Status</h2>
+      <p>{% status_badge entry.status %}</p>
+      <dl class="detail-list stacked">
+        <div><dt>Created</dt><dd>{{ entry.created_at|date:"j M Y, H:i" }}{% if entry.created_by %}<br><span class="muted small">by {{ entry.created_by|person }}</span>{% endif %}</dd></div>
+        <div><dt>Last updated</dt><dd>{{ entry.updated_at|date:"j M Y, H:i" }}</dd></div>
+        <div><dt>Submitted</dt><dd>{% if entry.submitted_at %}{{ entry.submitted_at|date:"j M Y, H:i" }}{% else %}-{% endif %}</dd></div>
+        {% if entry.reviewed_at %}
+        <div><dt>Reviewed</dt><dd>{{ entry.reviewed_at|date:"j M Y, H:i" }}<br><span class="muted small">by {{ entry.reviewed_by|person }}</span></dd></div>
+        {% endif %}
+      </dl>
+
+      {% if entry.status == 'approved' and not is_admin_user %}
+      <p class="hours-note">This timesheet is approved and locked. Contact an administrator if it needs a correction.</p>
+      {% elif entry.status == 'submitted' and not is_admin_user %}
+      <p class="hours-note">Submitted and waiting for review. It cannot be edited until it has been reviewed.</p>
+      {% endif %}
+
+      {% if can_submit %}
+      <form method="post" action="{% url 'timesheet_submit' entry.pk %}" data-confirm="Submit this timesheet for approval?">
+        {% csrf_token %}
+        <button type="submit" class="btn btn-primary btn-block">Submit for approval</button>
+      </form>
+      {% endif %}
+      {% if can_approve or can_reject %}
+      <div class="review-panel">
+        <p class="small muted">Administrator review</p>
+        {% if can_approve and can_reject %}
+          {% include "partials/_review_actions.html" with entry=entry %}
+        {% elif can_reject %}
+          <p class="small muted">Approved. Rejecting reverses the approval and unlocks the entry for the employee.</p>
+          <details class="reject-box" open>
+            <summary class="btn btn-danger-outline btn-sm">Reverse approval&hellip;</summary>
+            <form method="post" action="{% url 'timesheet_reject' entry.pk %}" class="reject-form">
+              {% csrf_token %}
+              <label for="reason-rev" class="sr-only">Reason</label>
+              <input type="text" id="reason-rev" name="comment" maxlength="500" placeholder="Reason (optional)">
+              <button type="submit" class="btn btn-danger btn-sm">Confirm</button>
+            </form>
+          </details>
+        {% endif %}
+      </div>
+      {% endif %}
+    </section>
+
+    {% if audit %}
+    <section class="card">
+      <h2 class="serif">Audit trail</h2>
+      <ul class="activity-list compact">
+        {% for log in audit %}
+        <li><span class="activity-time">{{ log.timestamp|date:"j M, H:i" }}</span><span>{{ log.get_action_display }} <span class="muted">&middot; {{ log.actor_username }}</span>{% if log.details %}<br><span class="muted small">{{ log.details|truncatechars:90 }}</span>{% endif %}</span></li>
+        {% endfor %}
+      </ul>
+    </section>
+    {% endif %}
+  </aside>
+</div>
+{% endblock %}

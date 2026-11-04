@@ -1,0 +1,23 @@
+{% extends "admin/base.html" %}
+{% load static %}
+{% block title %}{% if subtitle %}{{ subtitle }} | {% endif %}{{ title }} | Formery Timesheet Database{% endblock %}
+{% block extrastyle %}{{ block.super }}
+<link rel="icon" type="image/svg+xml" href="{% static 'img/favicon.svg' %}">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,500;1,500&amp;family=Jost:wght@300;400;500;600&amp;display=swap">
+<style>
+  :root {
+    --primary: #1b1b1a; --secondary: #3a3935; --accent: #8b7355; --primary-fg: #fff;
+    --body-fg: #1b1b1a; --body-bg: #fbfaf8; --link-fg: #1b1b1a; --link-hover-color: #8b7355;
+    --header-color: #fff; --header-branding-color: #fff; --header-bg: #1b1b1a; --header-link-color: #fff;
+    --breadcrumbs-bg: #3a3935; --breadcrumbs-fg: #e9e5de; --breadcrumbs-link-fg: #fff;
+    --button-bg: #1b1b1a; --button-hover-bg: #3a3935; --default-button-bg: #1b1b1a; --default-button-hover-bg: #3a3935;
+    --object-tools-bg: #1b1b1a; --object-tools-hover-bg: #3a3935;
+    --font-family-primary: "Jost", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  }
+  #site-name a, #site-name a:link, #site-name a:visited { color: #fff; }
+  #site-name a { font-family: "Cormorant Garamond", Georgia, serif; font-size: 1.5rem; letter-spacing: .28em; text-transform: uppercase; font-weight: 500; }
+  #site-name a small { font-family: "Jost", sans-serif; font-size: .62rem; letter-spacing: .22em; margin-left: 12px; opacity: .8; }
+</style>
+{% endblock %}
+{% block branding %}<h1 id="site-name"><a href="{% url 'admin:index' %}">Formery<small>Timesheet Database</small></a></h1>{% endblock %}
+{% block nav-global %}{% endblock %}

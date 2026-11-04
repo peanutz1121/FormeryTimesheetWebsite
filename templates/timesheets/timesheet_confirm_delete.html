@@ -1,0 +1,21 @@
+{% extends "base.html" %}
+{% load ts_extras %}
+{% block title %}Delete timesheet{% endblock %}
+{% block page_title %}Delete timesheet{% endblock %}
+{% block content %}
+<section class="card confirm-card">
+  <h2 class="serif">Delete this timesheet entry?</h2>
+  <p>This permanently removes the entry and its approval history. An audit record of the deletion is kept.</p>
+  <dl class="detail-list">
+    <div><dt>Employee</dt><dd>{{ entry.employee_name }}</dd></div>
+    <div><dt>Work date</dt><dd>{{ entry.work_date|date:"j M Y" }}</dd></div>
+    <div><dt>Hours</dt><dd>{{ entry.total_hours|hrs }}</dd></div>
+    <div><dt>Status</dt><dd>{% status_badge entry.status %}</dd></div>
+  </dl>
+  <form method="post" class="form-actions">
+    {% csrf_token %}
+    <a class="btn btn-ghost" href="{% url 'timesheet_detail' entry.pk %}">Keep it</a>
+    <button type="submit" class="btn btn-danger">Yes, delete permanently</button>
+  </form>
+</section>
+{% endblock %}

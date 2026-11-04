@@ -1,0 +1,38 @@
+{% extends "base.html" %}
+{% load static %}
+{% block title %}Sign in{% endblock %}
+{% block public_class %} has-media login-page{% endblock %}
+{% block public_media %}
+
+<aside class="auth-media" aria-hidden="true">
+  <img src="{% static 'img/login-si.jpg' %}" alt="" class="auth-media-img">
+  <div class="auth-media-caption"><span>Formery</span><small>Timesheet Database</small></div>
+</aside>
+{% endblock %}
+{% block content %}
+<section class="auth-panel">
+  <p class="eyebrow">Welcome back</p>
+  <h1>Sign in to your <em>timesheets</em></h1>
+  <p class="muted">Use the account your administrator created for you.</p>
+
+  <form method="post" class="form-stack" novalidate>
+    {% csrf_token %}
+    {% if form.non_field_errors %}
+    <div class="form-alert" role="alert">{{ form.non_field_errors.0 }}</div>
+    {% endif %}
+    <div class="field">
+      <label for="{{ form.username.id_for_label }}">Username</label>
+      {{ form.username }}
+      {% for e in form.username.errors %}<p class="field-error">{{ e }}</p>{% endfor %}
+    </div>
+    <div class="field">
+      <label for="{{ form.password.id_for_label }}">Password</label>
+      {{ form.password }}
+      {% for e in form.password.errors %}<p class="field-error">{{ e }}</p>{% endfor %}
+    </div>
+    {% if next %}<input type="hidden" name="next" value="{{ next }}">{% endif %}
+    <button type="submit" class="btn btn-primary btn-block">Sign in</button>
+  </form>
+  <p class="muted small login-help">Forgot your password? Ask an administrator to set a new one for you.</p>
+</section>
+{% endblock %}

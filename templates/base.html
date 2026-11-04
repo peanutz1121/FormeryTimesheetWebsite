@@ -1,0 +1,99 @@
+{% load static ts_extras %}<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{% block title %}Welcome{% endblock %} · {{ app_name }}</title>
+  {% comment %} <link rel="icon" type="image/svg+xml" href="{% static 'img/favicon.svg' %}"> {% endcomment %}
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;1,400;1,500&amp;family=Jost:wght@300;400;500;600&amp;display=swap">
+  <link rel="stylesheet" href="{% static 'css/app.css' %}">
+</head>
+<body class="{% if user.is_authenticated %}app{% else %}public{% endif %}">
+<a class="skip-link" href="#main">Skip to content</a>
+
+{% if user.is_authenticated %}
+<header class="site-header">
+  <div class="site-header-inner">
+    <a class="brand" href="{% url 'dashboard' %}" aria-label="{{ app_name }} home">{% include "partials/_brand.html" %}</a>
+    <button type="button" class="nav-toggle" aria-controls="nav-panel" aria-expanded="false" aria-label="Open navigation">
+      <span></span><span></span><span></span>
+    </button>
+    <div class="nav-panel" id="nav-panel">
+      <nav class="nav" aria-label="Primary">
+        <a href="{% url 'dashboard' %}" class="{% if nav_section == 'dashboard' %}active{% endif %}">Dashboard</a>
+        <a href="{% url 'timesheet_list' %}" class="{% if nav_section == 'timesheets' %}active{% endif %}">{% if is_admin_user %}Timesheets{% else %}My timesheets{% endif %}</a>
+        <a href="{% url 'timesheet_create' %}" class="{% if nav_section == 'create' %}active{% endif %}">New timesheet</a>
+        <a href="{% url 'til_overview' %}" class="{% if nav_section == 'til' %}active{% endif %}">{% if is_admin_user %}Time in Lieu{% if til_pending_count %}<span class="nav-count">{{ til_pending_count }}</span>{% endif %}{% else %}My TIL{% endif %}</a>
+        {% if not is_admin_user %}<a href="{% url 'my_projects' %}" class="{% if nav_section == 'myprojects' %}active{% endif %}">My projects</a>{% endif %}
+        {% if is_admin_user %}
+        <span class="nav-sep" aria-hidden="true"></span>
+        <a href="{% url 'timesheet_list' %}?status=submitted" class="{% if nav_section == 'approvals' %}active{% endif %}">Approvals{% if pending_count %}<span class="nav-count">{{ pending_count }}</span>{% endif %}</a>
+        <a href="{% url 'employee_list' %}" class="{% if nav_section == 'employees' %}active{% endif %}">Employees</a>
+        <a href="{% url 'project_list' %}" class="{% if nav_section == 'projects' %}active{% endif %}">Projects</a>
+        <a href="{% url 'access_list' %}" class="{% if nav_section == 'access' %}active{% endif %}">Access</a>
+        <a href="{% url 'reports' %}" class="{% if nav_section == 'reports' %}active{% endif %}">Reports</a>
+        <a href="{% url 'admin:index' %}">Django Admin<span aria-hidden="true"> &#8599;</span></a>
+        {% endif %}
+      </nav>
+      <div class="header-user">
+        <span class="user-meta">
+          <strong>{{ user|person }}</strong>
+          <small>{% if is_admin_user %}Administrator{% else %}Employee{% endif %}</small>
+        </span>
+        <form method="post" action="{% url 'logout' %}">
+          {% csrf_token %}
+          <button type="submit" class="btn btn-ghost btn-sm">Sign out</button>
+        </form>
+      </div>
+    </div>
+  </div>
+</header>
+
+<div class="main-col">
+  <div class="topbar">
+    <div class="page-heading">
+      <h1>{% block page_title %}{% endblock %}</h1>
+      {% block page_subtitle %}{% endblock %}
+    </div>
+    <div class="page-actions">{% block page_actions %}{% endblock %}</div>
+  </div>
+{% else %}
+<div class="public-wrap{% block public_class %}{% endblock %}">
+  {% block public_media %}{% endblock %}
+  <div class="public-shell">
+    <a class="brand brand-public" href="{% url 'login' %}">{% include "partials/_brand.html" %}</a>
+{% endif %}
+
+    {% if messages %}
+    <div class="flashes" aria-live="polite">
+      {% for message in messages %}
+      <div class="flash flash-{{ message.tags }}" role="status">
+        <span>{{ message }}</span>
+        <button type="button" class="flash-close" aria-label="Dismiss message">&times;</button>
+      </div>
+      {% endfor %}
+    </div>
+    {% endif %}
+
+    <main id="main" class="content">
+      {% block content %}{% endblock %}
+    </main>
+
+{% if user.is_authenticated %}
+  <footer class="footer">
+    <span>{{ app_name }}</span>
+    <span>Internal time tracking &middot; times shown in {{ time_zone }}</span>
+  </footer>
+</div>
+{% else %}
+    <p class="public-footer">{{ app_name }} &middot; authorised users only</p>
+  </div>
+</div>
+{% endif %}
+
+<script src="{% static 'js/app.js' %}" defer></script>
+{% block extra_js %}{% endblock %}
+</body>
+</html>

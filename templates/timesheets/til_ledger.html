@@ -1,0 +1,112 @@
+{% extends "base.html" %}
+{% load ts_extras %}
+{% block title %}Time in Lieu{% endblock %}
+{% block page_title %}{% if is_self %}My time in lieu{% else %}Time in lieu: {{ person|person }}{% endif %}{% endblock %}
+{% block page_subtitle %}<p class="muted">{{ person.profile.employee_id }} &middot; banked hours ledger</p>{% endblock %}
+{% block page_actions %}{% if is_admin_user %}<a class="btn btn-ghost" href="{% url 'til_requests' %}">Requests{% if til_pending_count %} ({{ til_pending_count }}){% endif %}</a><a class="btn btn-ghost" href="{% url 'til_overview' %}">All staff</a>{% endif %}{% endblock %}
+
+{% block content %}
+<section class="stat-grid" aria-label="Time in lieu summary">
+  <article class="stat"><p class="stat-label">Earned</p><p class="stat-value">{{ earned|hrs }}</p></article>
+  <article class="stat"><p class="stat-label">Used</p><p class="stat-value">{{ used|hrs }}</p></article>
+  <article class="stat stat-warn"><p class="stat-label">Balance available</p><p class="stat-value">{{ balance|hrs }}</p>{% if pending_earned or pending_taken %}<p class="muted small">Awaiting approval:{% if pending_earned %} +{{ pending_earned|hrs }} h earned{% endif %}{% if pending_taken %} -{{ pending_taken|hrs }} h time off{% endif %}</p>{% endif %}</article>
+</section>
+
+{% if request_form %}
+<form method="post" novalidate class="timesheet-form">
+  {% csrf_token %}
+  <input type="hidden" name="action" value="request">
+  <section class="card form-section">
+    <h2 class="serif">Request time in lieu</h2>
+    <p class="muted small">Bank hours you have worked (earned) or ask for time off (taken). Your balance only changes once an administrator approves the request.</p>
+    {% if request_form.non_field_errors %}<div class="form-alert" role="alert">{% for e in request_form.non_field_errors %}<p>{{ e }}</p>{% endfor %}</div>{% endif %}
+    <div class="form-grid">
+      {% include "partials/_field.html" with field=request_form.kind %}
+      {% include "partials/_field.html" with field=request_form.work_date %}
+      {% include "partials/_field.html" with field=request_form.hours %}
+      {% include "partials/_field.html" with field=request_form.reason %}
+    </div>
+    <div class="form-actions"><button type="submit" class="btn btn-primary">Send for approval</button></div>
+  </section>
+</form>
+{% endif %}
+
+{% if til_requests %}
+<section class="card">
+  <div class="card-head"><h2 class="serif">{% if is_self %}My requests{% else %}Requests{% endif %}</h2></div>
+  <div class="table-wrap">
+    <table class="table">
+      <thead><tr><th>Date</th><th>Type</th><th class="num">Hours</th><th>Reason</th><th>Status</th><th>Decision</th><th></th></tr></thead>
+      <tbody>
+      {% for r in til_requests %}
+      <tr>
+        <td>{{ r.work_date|date:"j M Y" }}</td>
+        <td>{{ r.get_kind_display }}</td>
+        <td class="num">{% if r.kind == "taken" %}-{% else %}+{% endif %}{{ r.hours|hrs }}</td>
+        <td>{{ r.reason }}</td>
+        <td><span class="badge badge-{{ r.status }}">{{ r.get_status_display }}</span></td>
+        <td class="muted small">{% if r.reviewed_by %}{{ r.reviewed_by|person }}, {{ r.reviewed_at|date:"j M Y" }}{% if r.review_comment %}<br>{{ r.review_comment }}{% endif %}{% else %}-{% endif %}</td>
+        <td class="row-actions">
+          {% if r.status == "pending" %}
+            {% if is_self %}
+            <form method="post" action="{% url 'til_request_cancel' r.pk %}" data-confirm="Cancel this request?">{% csrf_token %}<button type="submit" class="btn btn-ghost btn-sm">Cancel</button></form>
+            {% endif %}
+            {% if can_review %}
+            <form method="post" action="{% url 'til_request_approve' r.pk %}">{% csrf_token %}<input type="hidden" name="next" value="{{ request.get_full_path }}"><button type="submit" class="btn btn-primary btn-sm">Approve</button></form>
+            <form method="post" action="{% url 'til_request_reject' r.pk %}" data-confirm="Reject this request?">{% csrf_token %}<input type="hidden" name="next" value="{{ request.get_full_path }}"><button type="submit" class="btn btn-danger-outline btn-sm">Reject</button></form>
+            {% endif %}
+          {% endif %}
+        </td>
+      </tr>
+      {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</section>
+{% endif %}
+
+{% if form %}
+<form method="post" novalidate class="timesheet-form">
+  {% csrf_token %}
+  <section class="card form-section">
+    <h2 class="serif">Record time in lieu{% if is_self %} (administrator){% endif %}</h2>
+    {% if form.non_field_errors %}<div class="form-alert" role="alert">{% for e in form.non_field_errors %}<p>{{ e }}</p>{% endfor %}</div>{% endif %}
+    <div class="form-grid">
+      {% include "partials/_field.html" with field=form.entry_date %}
+      {% include "partials/_field.html" with field=form.kind %}
+      {% include "partials/_field.html" with field=form.hours %}
+      {% include "partials/_field.html" with field=form.note %}
+    </div>
+    <div class="form-actions"><button type="submit" class="btn btn-primary">Add entry</button></div>
+  </section>
+</form>
+{% endif %}
+
+<section class="card">
+  <div class="card-head"><h2 class="serif">Ledger</h2></div>
+  {% if entries %}
+  <div class="table-wrap">
+    <table class="table">
+      <thead><tr><th>Date</th><th>Type</th><th class="num">Hours</th><th>Note</th><th>Recorded by</th>{% if is_admin_user %}<th></th>{% endif %}</tr></thead>
+      <tbody>
+      {% for e in entries %}
+      <tr>
+        <td>{{ e.entry_date|date:"j M Y" }}</td>
+        <td>{{ e.get_kind_display }}</td>
+        <td class="num">{% if e.signed_hours > 0 %}+{% endif %}{{ e.signed_hours|hrs }}</td>
+        <td>{{ e.note|default:"-" }}</td>
+        <td class="muted small">{{ e.recorded_by|person }}</td>
+        {% if is_admin_user %}<td class="row-actions">
+          <form method="post" action="{% url 'til_delete' e.pk %}" data-confirm="Delete this time in lieu entry?">{% csrf_token %}<button type="submit" class="btn btn-danger-outline btn-sm">Delete</button></form>
+        </td>{% endif %}
+      </tr>
+      {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% include "partials/_pagination.html" %}
+  {% else %}
+  <div class="empty"><p><strong>No time in lieu recorded yet.</strong></p></div>
+  {% endif %}
+</section>
+{% endblock %}

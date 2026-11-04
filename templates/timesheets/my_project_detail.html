@@ -1,0 +1,21 @@
+{% extends "base.html" %}
+{% load ts_extras %}
+{% block title %}{{ project.name }}{% endblock %}
+{% block page_title %}{{ project.name }}{% endblock %}
+{% block page_subtitle %}<p class="muted">{{ project.code }} &middot; {{ project.get_status_display }}</p>{% endblock %}
+{% block page_actions %}<a class="btn btn-ghost" href="{% url 'my_projects' %}">All my projects</a><a class="btn btn-primary" href="{% url 'timesheet_create' %}">New timesheet</a>{% endblock %}
+{% block content %}
+<section class="card">
+  <h2 class="serif">Task checklist</h2>
+  {% if project.tasks.all %}<ul>{% for t in project.tasks.all %}<li>{{ t.name }}</li>{% endfor %}</ul>
+  {% else %}<p class="empty-inline">No tasks have been added to this project.</p>{% endif %}
+</section>
+<section class="card">
+  <div class="card-head"><h2 class="serif">My time on this project</h2><span class="muted">{{ total_hours|hrs }} h total</span></div>
+  {% if recent %}
+  <div class="table-wrap"><table class="table"><thead><tr><th>Work date</th><th class="num">Hours</th><th>Status</th><th></th></tr></thead>
+    <tbody>{% for e in recent %}<tr><td>{{ e.work_date|date:"j M Y" }}</td><td class="num">{{ e.total_hours|hrs }}</td><td>{% status_badge e.status %}</td>
+    <td class="row-actions"><a class="btn btn-ghost btn-sm" href="{% url 'timesheet_detail' e.pk %}">View</a></td></tr>{% endfor %}</tbody></table></div>
+  {% else %}<p class="empty-inline">You haven't logged time on this project yet.</p>{% endif %}
+</section>
+{% endblock %}

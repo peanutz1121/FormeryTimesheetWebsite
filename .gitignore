@@ -1,0 +1,25 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+
+# Virtual environments
+venv/
+.venv/
+env/
+
+# Local database and generated files
+db.sqlite3
+db.sqlite3-journal
+staticfiles/
+*.log
+
+# Secrets / local configuration
+.env
+.env.*
+
+# Editors and OS files
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db

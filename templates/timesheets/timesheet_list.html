@@ -1,0 +1,85 @@
+{% extends "base.html" %}
+{% load ts_extras %}
+{% block title %}Timesheets{% endblock %}
+{% block page_title %}{% if is_admin_user %}Timesheets{% else %}My timesheets{% endif %}{% endblock %}
+{% block page_subtitle %}<p class="muted">{{ count }} record{{ count|pluralize }}{% if filtered %} match your filters{% endif %}</p>{% endblock %}
+{% block page_actions %}
+  {% if is_admin_user %}<a class="btn btn-ghost" href="{% url 'report_export' %}?{% qs_replace page=None sort=None %}">Export CSV</a>{% endif %}
+  <a class="btn btn-primary" href="{% url 'timesheet_create' %}">New timesheet</a>
+{% endblock %}
+
+{% block content %}
+<form method="get" class="card filters" role="search">
+  <div class="filter-grid">
+    <div class="field field-wide">{{ form.q.label_tag }}{{ form.q }}{% for e in form.q.errors %}<p class="field-error">{{ e }}</p>{% endfor %}</div>
+    {% if is_admin_user %}
+    <div class="field">{{ form.employee.label_tag }}{{ form.employee }}</div>
+    <div class="field">{{ form.department.label_tag }}{{ form.department }}</div>
+    {% endif %}
+    <div class="field">{{ form.project.label_tag }}{{ form.project }}</div>
+    <div class="field">{{ form.status.label_tag }}{{ form.status }}</div>
+    <div class="field">{{ form.start.label_tag }}{{ form.start }}{% for e in form.start.errors %}<p class="field-error">{{ e }}</p>{% endfor %}</div>
+    <div class="field">{{ form.end.label_tag }}{{ form.end }}{% for e in form.end.errors %}<p class="field-error">{{ e }}</p>{% endfor %}</div>
+    <div class="field">{{ form.sort.label_tag }}{{ form.sort }}</div>
+  </div>
+  <div class="filter-actions">
+    <button type="submit" class="btn btn-primary">Apply filters</button>
+    {% if filtered or request.GET.sort %}<a class="btn btn-ghost" href="{% url 'timesheet_list' %}">Clear</a>{% endif %}
+  </div>
+</form>
+
+<section class="card">
+  <div class="totals-bar">
+    <div><span class="muted small">Total hours</span><strong>{{ total_hours|hrs }}</strong></div>
+    <div><span class="muted small">Regular</span><strong>{{ total_regular|hrs }}</strong></div>
+    <div><span class="muted small">Overtime</span><strong>{{ total_overtime|hrs }}</strong></div>
+    <div><span class="muted small">Entries</span><strong>{{ count }}</strong></div>
+  </div>
+
+  {% if entries %}
+  <div class="table-wrap">
+    <table class="table">
+      <thead><tr>
+        {% if is_admin_user %}<th><a class="sort" href="?{% sort_qs 'employee' %}">Employee {% sort_arrow 'employee' %}</a></th>{% endif %}
+        <th><a class="sort" href="?{% sort_qs 'work_date' %}">Work date {% sort_arrow 'work_date' %}</a></th>
+        <th><a class="sort" href="?{% sort_qs 'project' %}">Project {% sort_arrow 'project' %}</a></th>
+        <th>Task</th>
+        <th class="num"><a class="sort" href="?{% sort_qs 'total' %}">Hours {% sort_arrow 'total' %}</a></th>
+        <th><a class="sort" href="?{% sort_qs 'status' %}">Status {% sort_arrow 'status' %}</a></th>
+        <th><a class="sort" href="?{% sort_qs 'created' %}">Created {% sort_arrow 'created' %}</a></th>
+        <th>Actions</th>
+      </tr></thead>
+      <tbody>
+      {% for e in entries %}
+      <tr>
+        {% if is_admin_user %}<td><a href="{% url 'timesheet_detail' e.pk %}"><strong>{{ e.employee_name }}</strong></a><br><span class="muted small">{{ e.employee_code|default:"-" }}</span></td>{% endif %}
+        <td>{{ e.work_date|date:"D j M Y" }}</td>
+        <td>{{ e.project_label|default:"-" }}</td>
+        <td class="task-cell">{{ e.task_description|truncatechars:80 }}</td>
+        <td class="num"><strong>{{ e.total_hours|hrs }}</strong><br><span class="muted small">{{ e.regular_hours|hrs }} reg &middot; {{ e.overtime_hours|hrs }} ot</span></td>
+        <td>{% status_badge e.status %}</td>
+        <td class="muted small">{{ e.created_at|date:"j M Y" }}</td>
+        <td class="row-actions">
+          <a class="btn btn-ghost btn-sm" href="{% url 'timesheet_detail' e.pk %}">View</a>
+          {% if is_admin_user or e.status == 'draft' or e.status == 'rejected' %}<a class="btn btn-ghost btn-sm" href="{% url 'timesheet_edit' e.pk %}">Edit</a>{% endif %}
+        </td>
+      </tr>
+      {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% include "partials/_pagination.html" %}
+  {% else %}
+  <div class="empty">
+    {% if filtered %}
+      <p><strong>No timesheets match these filters.</strong></p>
+      <p class="muted">Try widening the date range or clearing the search.</p>
+      <a class="btn btn-ghost" href="{% url 'timesheet_list' %}">Clear filters</a>
+    {% else %}
+      <p><strong>No timesheets yet.</strong></p>
+      <a class="btn btn-primary" href="{% url 'timesheet_create' %}">Create a timesheet</a>
+    {% endif %}
+  </div>
+  {% endif %}
+</section>
+{% endblock %}

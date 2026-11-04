@@ -1,0 +1,91 @@
+{% extends "base.html" %}
+{% block title %}{% if project %}Edit project{% else %}Add project{% endif %}{% endblock %}
+{% block page_title %}{% if project %}Edit project{% else %}Add project{% endif %}{% endblock %}
+{% block page_subtitle %}<p class="muted">{% if project %}{{ project.name }} &middot; {{ project.code }}{% else %}Projects appear in the timesheet form until they are completed, on hold or archived{% endif %}</p>{% endblock %}
+{% block page_actions %}<a class="btn btn-ghost" href="{% url 'project_list' %}">Cancel</a>{% endblock %}
+
+{% block content %}
+{% if form.non_field_errors %}<div class="form-alert" role="alert">{% for e in form.non_field_errors %}<p>{{ e }}</p>{% endfor %}</div>{% endif %}
+<form method="post" novalidate class="timesheet-form">
+  {% csrf_token %}
+  <section class="card form-section">
+    <h2 class="serif">Project</h2>
+    <div class="form-grid">
+      {% include "partials/_field.html" with field=form.name %}
+      {% include "partials/_field.html" with field=form.code %}
+      {% include "partials/_field.html" with field=form.section %}
+      {% include "partials/_field.html" with field=form.status %}
+      {% include "partials/_field.html" with field=form.start_date %}
+      {% include "partials/_field.html" with field=form.end_date %}
+    </div>
+  </section>
+
+  <section class="card form-section">
+    <h2 class="serif">Tasks</h2>
+    <p class="muted">The task checklist for this project. Staff tick these on the timesheet form. Edit a name, remove a task, or add new ones.</p>
+    {{ tasks.management_form }}
+    {% if tasks.non_form_errors %}<p class="field-error">{{ tasks.non_form_errors|join:" " }}</p>{% endif %}
+    <div class="task-rows" id="task-rows">
+      {% for tform in tasks %}
+      <div class="task-row">
+        {{ tform.id }}
+        {% include "partials/_field.html" with field=tform.name %}
+        <span style="display:none">{{ tform.DELETE }}</span>
+        <button type="button" class="btn btn-ghost btn-sm task-remove">Remove</button>
+      </div>
+      {% endfor %}
+    </div>
+    <template id="task-row-template">
+      <div class="task-row">
+        <div class="field"><input type="text" name="tasks-__prefix__-name" id="id_tasks-__prefix__-name" maxlength="200" placeholder="e.g. Prepare floor plans" aria-label="Task"></div>
+        <span style="display:none"><input type="checkbox" name="tasks-__prefix__-DELETE" id="id_tasks-__prefix__-DELETE"></span>
+        <button type="button" class="btn btn-ghost btn-sm task-remove">Remove</button>
+      </div>
+    </template>
+    <button type="button" class="btn btn-ghost" id="add-task">+ Add task</button>
+  </section>
+  <div class="form-actions"><button type="submit" class="btn btn-primary">{% if project %}Save changes{% else %}Create project{% endif %}</button></div>
+</form>
+
+<script>
+(function () {
+  var rows = document.getElementById("task-rows");
+  var total = document.getElementById("id_tasks-TOTAL_FORMS");
+  var tpl = document.getElementById("task-row-template");
+  if (!rows || !total || !tpl) { return; }
+  function wire(row) {
+    row.querySelector(".task-remove").addEventListener("click", function () {
+      var del = row.querySelector("input[type=checkbox]");
+      var idInput = row.querySelector("input[type=hidden]");
+      if (idInput && idInput.value) { del.checked = true; row.classList.add("is-removed"); }
+      else { row.remove(); }
+    });
+  }
+  rows.querySelectorAll(".task-row").forEach(wire);
+  document.getElementById("add-task").addEventListener("click", function () {
+    var html = tpl.innerHTML.replace(/__prefix__/g, total.value);
+    var holder = document.createElement("div");
+    holder.innerHTML = html.trim();
+    var row = holder.firstChild;
+    rows.appendChild(row);
+    total.value = parseInt(total.value, 10) + 1;
+    wire(row);
+    row.querySelector("input[type=text]").focus();
+  });
+})();
+</script>
+
+{% if project %}
+<section class="card form-section">
+  <h2 class="serif">Remove project</h2>
+  {% if project.entry_count %}
+    <p class="muted">This project is used by {{ project.entry_count }} timesheet entr{{ project.entry_count|pluralize:"y,ies" }}, so it cannot be deleted. Set its Stage Status to <strong>Archived</strong> to hide it from new timesheets while keeping history.</p>
+  {% else %}
+    <p class="muted">No timesheets use this project, so it can be deleted permanently.</p>
+    <form method="post" action="{% url 'project_delete' project.pk %}" data-confirm="Delete this project permanently?">
+      {% csrf_token %}<button type="submit" class="btn btn-danger-outline">Delete project</button>
+    </form>
+  {% endif %}
+</section>
+{% endif %}
+{% endblock %}

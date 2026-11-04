@@ -1,0 +1,110 @@
+{% extends "base.html" %}
+{% load ts_extras %}
+{% block title %}Reports{% endblock %}
+{% block page_title %}Reports{% endblock %}
+{% block page_subtitle %}<p class="muted">Analyse recorded work &middot; {{ data.totals.entries }} entr{{ data.totals.entries|pluralize:"y,ies" }} in scope</p>{% endblock %}
+{% block page_actions %}
+  {% if form_valid %}<a class="btn btn-primary" href="{% url 'report_export' %}{% if export_query %}?{{ export_query }}{% endif %}">Export CSV</a>{% endif %}
+{% endblock %}
+
+{% block content %}
+<form method="get" class="card filters" role="search">
+  <div class="filter-grid">
+    <div class="field">{{ form.start.label_tag }}{{ form.start }}{% for e in form.start.errors %}<p class="field-error">{{ e }}</p>{% endfor %}</div>
+    <div class="field">{{ form.end.label_tag }}{{ form.end }}{% for e in form.end.errors %}<p class="field-error">{{ e }}</p>{% endfor %}</div>
+    <div class="field">{{ form.employee.label_tag }}{{ form.employee }}</div>
+    <div class="field">{{ form.department.label_tag }}{{ form.department }}</div>
+    <div class="field">{{ form.project.label_tag }}{{ form.project }}</div>
+    <div class="field">{{ form.status.label_tag }}{{ form.status }}</div>
+    <div class="field field-wide">{{ form.q.label_tag }}{{ form.q }}</div>
+  </div>
+  <div class="filter-actions">
+    <button type="submit" class="btn btn-primary">Run report</button>
+    {% if filtered %}<a class="btn btn-ghost" href="{% url 'reports' %}">Clear filters</a>{% endif %}
+    <span class="muted small">CSV export is a plain .csv file (not an Excel workbook) and contains only the records matching these filters.</span>
+  </div>
+</form>
+
+<section class="stat-grid" aria-label="Report totals">
+  <article class="stat"><p class="stat-label">Total hours</p><p class="stat-value">{{ data.totals.total|hrs }}</p></article>
+  <article class="stat"><p class="stat-label">Regular</p><p class="stat-value">{{ data.totals.regular|hrs }}</p></article>
+  <article class="stat"><p class="stat-label">Overtime</p><p class="stat-value">{{ data.totals.overtime|hrs }}</p></article>
+  <article class="stat"><p class="stat-label">Approved hours</p><p class="stat-value">{{ data.approved_hours|hrs }}</p></article>
+  <article class="stat stat-warn"><p class="stat-label">Pending (submitted) hours</p><p class="stat-value">{{ data.pending_hours|hrs }}</p></article>
+  <article class="stat"><p class="stat-label">Rejected timesheets</p><p class="stat-value">{{ data.rejected_count }}</p><p class="muted small">{{ data.rejected_hours|hrs }} h</p></article>
+</section>
+
+<section class="card">
+  <div class="card-head"><h2 class="serif">Approved versus pending</h2></div>
+  <div class="table-wrap"><table class="table">
+    <thead><tr><th>Status</th><th class="num">Entries</th><th class="num">Regular</th><th class="num">Overtime</th><th class="num">Total hours</th></tr></thead>
+    <tbody>{% for r in data.by_status %}
+      <tr><td>{% status_badge r.status %}</td><td class="num">{{ r.entries }}</td><td class="num">{{ r.regular|hrs }}</td><td class="num">{{ r.overtime|hrs }}</td><td class="num"><strong>{{ r.total|hrs }}</strong></td></tr>
+    {% endfor %}</tbody></table></div>
+</section>
+
+<div class="grid-2">
+  <section class="card">
+    <div class="card-head"><h2 class="serif">Hours by employee</h2><span class="muted small">Regular and overtime</span></div>
+    {% if data.by_employee %}
+    <div class="table-wrap"><table class="table">
+      <thead><tr><th>Employee</th><th>Dept.</th><th class="num">Entries</th><th class="num">Regular</th><th class="num">Overtime</th><th class="num">Total</th></tr></thead>
+      <tbody>{% for r in data.by_employee %}
+        <tr><td><a href="{% url 'employee_detail' r.employee_id %}">{{ r.name }}</a><br><span class="muted small">{{ r.code }}</span></td>
+        <td>{{ r.department|default:"-" }}</td><td class="num">{{ r.entries }}</td><td class="num">{{ r.regular|hrs }}</td><td class="num">{{ r.overtime|hrs }}</td><td class="num"><strong>{{ r.total|hrs }}</strong></td></tr>
+      {% endfor %}</tbody></table></div>
+    {% else %}<p class="empty-inline">No records match these filters.</p>{% endif %}
+  </section>
+
+  <section class="card">
+    <div class="card-head"><h2 class="serif">Hours by project</h2></div>
+    {% if data.by_project %}
+    <div class="table-wrap"><table class="table">
+      <thead><tr><th>Project</th><th class="num">Entries</th><th class="num">Regular</th><th class="num">Overtime</th><th class="num">Total</th></tr></thead>
+      <tbody>{% for r in data.by_project %}
+        <tr><td>{{ r.name }}{% if r.code %}<br><span class="muted small">{{ r.code }}</span>{% endif %}</td><td class="num">{{ r.entries }}</td><td class="num">{{ r.regular|hrs }}</td><td class="num">{{ r.overtime|hrs }}</td><td class="num"><strong>{{ r.total|hrs }}</strong></td></tr>
+      {% endfor %}</tbody></table></div>
+    {% else %}<p class="empty-inline">No records match these filters.</p>{% endif %}
+  </section>
+</div>
+
+<div class="grid-3">
+  <section class="card">
+    <div class="card-head"><h2 class="serif">Monthly summary</h2><span class="muted small">Latest 24 months</span></div>
+    {% if data.monthly %}<div class="table-wrap"><table class="table table-compact">
+      <thead><tr><th>Month</th><th class="num">Entries</th><th class="num">Overtime</th><th class="num">Total</th></tr></thead>
+      <tbody>{% for r in data.monthly %}<tr><td>{{ r.month|date:"M Y" }}</td><td class="num">{{ r.entries }}</td><td class="num">{{ r.overtime|hrs }}</td><td class="num"><strong>{{ r.total|hrs }}</strong></td></tr>{% endfor %}</tbody></table></div>
+    {% else %}<p class="empty-inline">No data.</p>{% endif %}
+  </section>
+  <section class="card">
+    <div class="card-head"><h2 class="serif">Weekly summary</h2><span class="muted small">Weeks start Monday &middot; latest 26</span></div>
+    {% if data.weekly %}<div class="table-wrap"><table class="table table-compact">
+      <thead><tr><th>Week of</th><th class="num">Entries</th><th class="num">Overtime</th><th class="num">Total</th></tr></thead>
+      <tbody>{% for r in data.weekly %}<tr><td>{{ r.week|date:"j M Y" }}</td><td class="num">{{ r.entries }}</td><td class="num">{{ r.overtime|hrs }}</td><td class="num"><strong>{{ r.total|hrs }}</strong></td></tr>{% endfor %}</tbody></table></div>
+    {% else %}<p class="empty-inline">No data.</p>{% endif %}
+  </section>
+  <section class="card">
+    <div class="card-head"><h2 class="serif">Daily summary</h2><span class="muted small">Latest 62 days</span></div>
+    {% if data.daily %}<div class="table-wrap scroll-y"><table class="table table-compact">
+      <thead><tr><th>Date</th><th class="num">Entries</th><th class="num">Overtime</th><th class="num">Total</th></tr></thead>
+      <tbody>{% for r in data.daily %}<tr><td>{{ r.work_date|date:"D j M Y" }}</td><td class="num">{{ r.entries }}</td><td class="num">{{ r.overtime|hrs }}</td><td class="num"><strong>{{ r.total|hrs }}</strong></td></tr>{% endfor %}</tbody></table></div>
+    {% else %}<p class="empty-inline">No data.</p>{% endif %}
+  </section>
+</div>
+
+<section class="card">
+  <div class="card-head"><h2 class="serif">Work history and date-range records</h2>
+    <span class="muted small">Pick an employee and dates above for an individual work-history report</span></div>
+  {% if entries %}
+  <div class="table-wrap"><table class="table">
+    <thead><tr><th>Work date</th><th>Employee</th><th>Project</th><th>Task</th><th class="num">Regular</th><th class="num">Overtime</th><th>Status</th></tr></thead>
+    <tbody>{% for e in entries %}
+      <tr><td>{{ e.work_date|date:"D j M Y" }}</td>
+      <td><a href="{% url 'timesheet_detail' e.pk %}">{{ e.employee_name }}</a><br><span class="muted small">{{ e.employee_code }}</span></td>
+      <td>{{ e.project_label|default:"-" }}</td><td class="task-cell">{{ e.task_description|truncatechars:70 }}</td>
+      <td class="num">{{ e.regular_hours|hrs }}</td><td class="num">{{ e.overtime_hours|hrs }}</td><td>{% status_badge e.status %}</td></tr>
+    {% endfor %}</tbody></table></div>
+  {% include "partials/_pagination.html" %}
+  {% else %}<div class="empty"><p><strong>No records match these filters.</strong></p><a class="btn btn-ghost" href="{% url 'reports' %}">Clear filters</a></div>{% endif %}
+</section>
+{% endblock %}

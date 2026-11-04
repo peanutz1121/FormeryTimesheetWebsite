@@ -1,0 +1,110 @@
+{% extends "base.html" %}
+{% load ts_extras %}
+{% block title %}{% if entry %}Edit timesheet{% else %}New timesheet{% endif %}{% endblock %}
+{% block page_title %}{% if entry %}Edit timesheet{% else %}New timesheet{% endif %}{% endblock %}
+{% block page_subtitle %}<p class="muted">{% if entry %}{{ entry.employee_name }} &middot; {{ entry.work_date|date:"j M Y" }}{% else %}Manually record a day's work{% endif %}</p>{% endblock %}
+{% block page_actions %}<a class="btn btn-ghost" href="{% if entry %}{% url 'timesheet_detail' entry.pk %}{% else %}{% url 'timesheet_list' %}{% endif %}">Cancel</a>{% endblock %}
+
+{% block content %}
+{% if form.non_field_errors %}
+<div class="form-alert" role="alert">
+  {% for e in form.non_field_errors %}<p>{{ e }}</p>{% endfor %}
+</div>
+{% endif %}
+
+<form method="post" class="timesheet-form" novalidate data-standard-hours="{{ standard_hours }}">
+  {% csrf_token %}
+
+  <section class="card form-section">
+    <h2 class="serif">Who, when and where</h2>
+    <div class="form-grid">
+      {% if admin_mode %}
+        {% include "partials/_field.html" with field=form.employee %}
+        <div class="field">
+          <label for="employee-code">Employee ID</label>
+          <input type="text" id="employee-code" value="{{ entry.employee_code }}" readonly tabindex="-1" aria-describedby="employee-code-help">
+          <p class="help" id="employee-code-help">Read-only. Follows the selected employee.</p>
+        </div>
+      {% else %}
+        <div class="field">
+          <label for="employee-name">Employee</label>
+          <input type="text" id="employee-name" value="{{ user|person }}" readonly tabindex="-1">
+        </div>
+        <div class="field">
+          <label for="employee-code">Employee ID</label>
+          <input type="text" id="employee-code" value="{{ user.profile.employee_id }}" readonly tabindex="-1">
+        </div>
+      {% endif %}
+      {% include "partials/_field.html" with field=form.work_date %}
+      {% include "partials/_field.html" with field=form.project %}
+      {% include "partials/_field.html" with field=form.work_location %}
+    </div>
+  </section>
+
+  <section class="card form-section">
+    <h2 class="serif">Task</h2>
+    <div class="task-checklist" id="task-checklist" hidden>
+      <p class="help">Tick the tasks you worked on &mdash; they are added to the description below.</p>
+      <div class="task-checklist-items" id="task-checklist-items"></div>
+    </div>
+    {% include "partials/_field.html" with field=form.task_description %}
+  </section>
+
+  <section class="card form-section" id="hours-section">
+    <h2 class="serif">Time and hours</h2>
+    <div class="form-grid form-grid-3">
+      {% include "partials/_field.html" with field=form.time_in %}
+      {% include "partials/_field.html" with field=form.time_out %}
+      {% include "partials/_field.html" with field=form.break_minutes %}
+    </div>
+    <p class="help">If time out is earlier than time in, the shift is treated as an overnight shift ending the next day.</p>
+
+    <fieldset class="mode-picker{% if form.hours_mode.errors %} has-error{% endif %}">
+      <legend>{{ form.hours_mode.label }}</legend>
+      {% for radio in form.hours_mode %}
+      <label class="mode-option" for="{{ radio.id_for_label }}">
+        {{ radio.tag }}
+        <span>{{ radio.choice_label }}</span>
+      </label>
+      {% endfor %}
+      {% for e in form.hours_mode.errors %}<p class="field-error">{{ e }}</p>{% endfor %}
+    </fieldset>
+
+    <div class="hours-note" id="hours-note" aria-live="polite" data-calc-note></div>
+
+    <div class="form-grid">
+      {% include "partials/_field.html" with field=form.regular_hours %}
+      {% include "partials/_field.html" with field=form.overtime_hours %}
+    </div>
+    <p class="help">
+      <strong>Manual:</strong> the hours you type are saved exactly as entered (regular and overtime are kept separate).<br>
+      <strong>Calculated:</strong> hours are worked out from the times minus the unpaid break; up to {{ standard_hours }} hours are regular, the rest is overtime. The fields above show a preview and are locked.
+    </p>
+  </section>
+
+  <section class="card form-section">
+    <h2 class="serif">Notes{% if admin_mode %} and status{% endif %}</h2>
+    <div class="form-grid">
+      {% include "partials/_field.html" with field=form.notes %}
+      {% if admin_mode %}{% include "partials/_field.html" with field=form.status %}{% endif %}
+    </div>
+    {% if entry %}
+    <p class="muted small">Created {{ entry.created_at|date:"j M Y, H:i" }}{% if entry.created_by %} by {{ entry.created_by|person }}{% endif %} &middot; last updated {{ entry.updated_at|date:"j M Y, H:i" }}</p>
+    {% else %}
+    <p class="muted small">Created by {{ user|person }}. The created and last-updated timestamps are recorded automatically.</p>
+    {% endif %}
+  </section>
+
+  <div class="form-actions">
+    {% if admin_mode %}
+      <button type="submit" class="btn btn-primary">Save timesheet</button>
+    {% else %}
+      <button type="submit" name="action" value="save" class="btn btn-ghost">Save as draft</button>
+      <button type="submit" name="action" value="submit" class="btn btn-primary">Save and submit for approval</button>
+    {% endif %}
+  </div>
+</form>
+
+{{ form.project_tasks_map|json_script:"project-tasks-map" }}
+{% if admin_mode %}{{ form.employee_code_map|json_script:"employee-code-map" }}{% endif %}
+{% endblock %}

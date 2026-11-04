@@ -1,0 +1,11 @@
+{% extends "base.html" %}
+{% block title %}Page not found{% endblock %}
+{% block page_title %}Page not found{% endblock %}
+{% block content %}
+<section class="card error-card">
+  <p class="error-code serif">404</p>
+  <h2 class="serif">We could not find that page</h2>
+  <p class="muted">The address may be mistyped, or the record may have been removed or may not be available to your account.</p>
+  <a class="btn btn-primary" href="{% url 'dashboard' %}">Back to the dashboard</a>
+</section>
+{% endblock %}

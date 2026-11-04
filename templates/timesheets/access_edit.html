@@ -1,0 +1,31 @@
+{% extends "base.html" %}
+{% load ts_extras %}
+{% block title %}Access: {{ person|person }}{% endblock %}
+{% block page_title %}Access: {{ person|person }}{% endblock %}
+{% block page_subtitle %}<p class="muted">{{ person.profile.employee_id }} &middot; {% if full_access %}Administrator{% else %}Employee{% endif %}</p>{% endblock %}
+{% block page_actions %}<a class="btn btn-ghost" href="{% url 'access_list' %}">Back</a>{% endblock %}
+
+{% block content %}
+{% if full_access %}
+<section class="card form-section">
+  <h2 class="serif">Full administrator access</h2>
+  <p class="muted">Administrators can use every section and every project. To change this, edit the account's Staff status in Django Admin.</p>
+</section>
+{% else %}
+<form method="post" novalidate class="timesheet-form">
+  {% csrf_token %}
+  <section class="card form-section">
+    <h2 class="serif">Restricted sections</h2>
+    <p class="muted">{{ form.sections.help_text }}</p>
+    <div class="access-checks">{% for box in form.sections %}<label class="task-check">{{ box.tag }} {{ box.choice_label }}</label>{% endfor %}</div>
+  </section>
+  <section class="card form-section">
+    <h2 class="serif">Projects this person can access</h2>
+    <p class="muted">Tick every project they should see and log time against. Unticked projects are invisible to them, including by direct link.</p>
+    {% if form.projects.errors %}<p class="field-error">{{ form.projects.errors|join:" " }}</p>{% endif %}
+    <div class="access-checks">{% for box in form.projects %}<label class="task-check">{{ box.tag }} {{ box.choice_label }}</label>{% empty %}<p class="empty-inline">No projects exist yet.</p>{% endfor %}</div>
+  </section>
+  <div class="form-actions"><button type="submit" class="btn btn-primary">Save access</button></div>
+</form>
+{% endif %}
+{% endblock %}

@@ -1,0 +1,43 @@
+{% extends "base.html" %}
+{% load ts_extras %}
+{% block title %}Access management{% endblock %}
+{% block page_title %}Access management{% endblock %}
+{% block page_subtitle %}<p class="muted">Choose which projects and restricted sections each person can use. Changes apply immediately.</p>{% endblock %}
+
+{% block content %}
+<form method="get" class="card filters" role="search">
+  <div class="filter-grid">
+    <div class="field field-wide"><label for="q">Search</label><input type="text" id="q" name="q" value="{{ q }}" placeholder="Name, username or employee ID"></div>
+  </div>
+  <div class="filter-actions">
+    <button class="btn btn-primary" type="submit">Search</button>
+    {% if q %}<a class="btn btn-ghost" href="{% url 'access_list' %}">Clear</a>{% endif %}
+  </div>
+</form>
+
+<section class="card">
+  <div class="table-wrap">
+    <table class="table">
+      <thead><tr><th>Employee ID</th><th>Name</th><th>Role</th><th>Projects</th><th>Restricted sections</th><th>Actions</th></tr></thead>
+      <tbody>
+      {% for p in people %}
+      <tr>
+        <td>{{ p.profile.employee_id }}</td>
+        <td><a href="{% url 'access_edit' p.pk %}"><strong>{{ p|person }}</strong></a></td>
+        <td class="muted small">{% if p.is_staff or p.is_superuser %}Administrator{% else %}Employee{% endif %}</td>
+        {% if p.is_staff or p.is_superuser %}
+          <td colspan="2"><span class="badge badge-approved">Full access to everything</span></td>
+        {% else %}
+          <td>{{ p.project_count }} assigned</td>
+          <td>{% if p.section_count %}{{ p.section_count }} granted{% else %}<span class="muted">None</span>{% endif %}</td>
+        {% endif %}
+        <td class="row-actions"><a class="btn btn-ghost btn-sm" href="{% url 'access_edit' p.pk %}">{% if p.is_staff or p.is_superuser %}View{% else %}Edit access{% endif %}</a></td>
+      </tr>
+      {% empty %}
+      <tr><td colspan="6" class="empty-inline">No one matches.</td></tr>
+      {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</section>
+{% endblock %}

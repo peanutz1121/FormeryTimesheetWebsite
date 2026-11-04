@@ -1,0 +1,39 @@
+{% extends "base.html" %}
+{% block title %}{% if employee %}Edit employee{% elif staff_mode %}Add staff account{% else %}Add employee{% endif %}{% endblock %}
+{% block page_title %}{% if employee %}Edit employee{% elif staff_mode %}Add staff account{% else %}Add employee{% endif %}{% endblock %}
+{% block page_subtitle %}<p class="muted">{% if employee %}{{ employee.username }}{% elif staff_mode %}Creates an administrator account: can review and approve timesheets, manage employees and projects, run reports and export CSV{% else %}Creates a standard (non-administrator) account{% endif %}</p>{% endblock %}
+{% block page_actions %}<a class="btn btn-ghost" href="{% if employee %}{% url 'employee_detail' employee.pk %}{% else %}{% url 'employee_list' %}{% endif %}">Cancel</a>{% endblock %}
+
+{% block content %}
+{% if staff_mode %}<div class="hours-note warn" role="note"><strong>Administrator access.</strong> This person will see every employee's timesheets and can approve, edit and delete them. Only create staff accounts for people who need that. Superuser rights are not granted here.</div>{% endif %}
+{% if form.non_field_errors %}<div class="form-alert" role="alert">{% for e in form.non_field_errors %}<p>{{ e }}</p>{% endfor %}</div>{% endif %}
+<form method="post" novalidate class="timesheet-form">
+  {% csrf_token %}
+  <section class="card form-section">
+    <h2 class="serif">Account</h2>
+    <div class="form-grid">
+      {% include "partials/_field.html" with field=form.username %}
+      {% include "partials/_field.html" with field=form.email %}
+      {% include "partials/_field.html" with field=form.first_name %}
+      {% include "partials/_field.html" with field=form.last_name %}
+      {% include "partials/_field.html" with field=form.password1 %}
+      {% include "partials/_field.html" with field=form.password2 %}
+    </div>
+    <div class="check-field">
+      {{ form.is_active }}
+      <label for="{{ form.is_active.id_for_label }}">{{ form.is_active.label }}</label>
+      <p class="help">Deactivated accounts cannot sign in. Their timesheet history is always kept.</p>
+      {% for e in form.is_active.errors %}<p class="field-error">{{ e }}</p>{% endfor %}
+    </div>
+  </section>
+  <section class="card form-section">
+    <h2 class="serif">Employment</h2>
+    <div class="form-grid">
+      {% include "partials/_field.html" with field=form.employee_id %}
+      {% include "partials/_field.html" with field=form.department %}
+      {% include "partials/_field.html" with field=form.job_title %}
+    </div>
+  </section>
+  <div class="form-actions"><button type="submit" class="btn btn-primary">{% if employee %}Save changes{% elif staff_mode %}Create staff account{% else %}Create employee{% endif %}</button></div>
+</form>
+{% endblock %}

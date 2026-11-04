@@ -1,0 +1,11 @@
+{% extends "base.html" %}
+{% block title %}Access denied{% endblock %}
+{% block page_title %}Access denied{% endblock %}
+{% block content %}
+<section class="card error-card">
+  <p class="error-code serif">403</p>
+  <h2 class="serif">You do not have permission to view this page</h2>
+  <p class="muted">This area is limited to administrators, or the record belongs to someone else. If you believe this is a mistake, contact your administrator.</p>
+  <a class="btn btn-primary" href="{% url 'dashboard' %}">Back to the dashboard</a>
+</section>
+{% endblock %}

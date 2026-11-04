@@ -1,0 +1,68 @@
+{% extends "base.html" %}
+{% load ts_extras %}
+{% block title %}Employees{% endblock %}
+{% block page_title %}Employees{% endblock %}
+{% block page_subtitle %}<p class="muted">{{ page.paginator.count }} account{{ page.paginator.count|pluralize }}</p>{% endblock %}
+{% block page_actions %}
+  <a class="btn btn-ghost" href="{% url 'staff_create' %}">Add staff account</a>
+  <a class="btn btn-primary" href="{% url 'employee_create' %}">Add employee</a>
+{% endblock %}
+
+{% block content %}
+<form method="get" class="card filters" role="search">
+  <div class="filter-grid">
+    <div class="field field-wide"><label for="q">Search</label><input type="text" id="q" name="q" value="{{ q }}" placeholder="Name, username, email, employee ID or job title"></div>
+    <div class="field"><label for="department">Department</label>
+      <select id="department" name="department"><option value="">All departments</option>
+      {% for d in departments %}<option value="{{ d }}" {% if d == department %}selected{% endif %}>{{ d }}</option>{% endfor %}</select></div>
+    <div class="field"><label for="role">Role</label>
+      <select id="role" name="role"><option value="">All roles</option>
+      <option value="employee" {% if role == 'employee' %}selected{% endif %}>Employees</option>
+      <option value="staff" {% if role == 'staff' %}selected{% endif %}>Staff / administrators</option></select></div>
+    <div class="field"><label for="state">Account status</label>
+      <select id="state" name="state"><option value="">All</option>
+      <option value="active" {% if state == 'active' %}selected{% endif %}>Active</option>
+      <option value="inactive" {% if state == 'inactive' %}selected{% endif %}>Deactivated</option></select></div>
+  </div>
+  <div class="filter-actions">
+    <button class="btn btn-primary" type="submit">Apply filters</button>
+    {% if filtered %}<a class="btn btn-ghost" href="{% url 'employee_list' %}">Clear</a>{% endif %}
+  </div>
+</form>
+
+<section class="card">
+  {% if employees %}
+  <div class="table-wrap">
+    <table class="table">
+      <thead><tr>
+        <th>Employee ID</th><th>Name</th><th>Username / email</th><th>Department</th><th>Job title</th>
+        <th>Status</th><th>Joined</th><th class="num">Total hrs</th><th class="num">Overtime</th><th>Actions</th>
+      </tr></thead>
+      <tbody>
+      {% for e in employees %}
+      <tr>
+        <td>{{ e.profile.employee_id }}</td>
+        <td><a href="{% url 'employee_detail' e.pk %}"><strong>{{ e|person }}</strong></a>{% if e.is_staff or e.is_superuser %}<br><span class="badge badge-source">Administrator</span>{% endif %}</td>
+        <td>{{ e.username }}<br><span class="muted small">{{ e.email|default:"-" }}</span></td>
+        <td>{{ e.profile.department|default:"-" }}</td>
+        <td>{{ e.profile.job_title|default:"-" }}</td>
+        <td>{% if e.is_active %}<span class="badge badge-approved">Active</span>{% else %}<span class="badge badge-draft">Deactivated</span>{% endif %}</td>
+        <td class="muted small">{{ e.date_joined|date:"j M Y" }}</td>
+        <td class="num">{{ e.total_hours|hrs }}</td>
+        <td class="num">{{ e.total_overtime|hrs }}</td>
+        <td class="row-actions">
+          <a class="btn btn-ghost btn-sm" href="{% url 'employee_detail' e.pk %}">View</a>
+          <a class="btn btn-ghost btn-sm" href="{% url 'employee_edit' e.pk %}">Edit</a>
+        </td>
+      </tr>
+      {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% include "partials/_pagination.html" %}
+  {% else %}
+  <div class="empty"><p><strong>No employees match.</strong></p>
+    {% if filtered %}<a class="btn btn-ghost" href="{% url 'employee_list' %}">Clear filters</a>{% else %}<a class="btn btn-primary" href="{% url 'employee_create' %}">Add the first employee</a>{% endif %}</div>
+  {% endif %}
+</section>
+{% endblock %}

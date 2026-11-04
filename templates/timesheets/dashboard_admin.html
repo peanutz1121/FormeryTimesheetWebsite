@@ -1,0 +1,152 @@
+{% extends "base.html" %}
+{% load ts_extras %}
+{% block title %}Dashboard{% endblock %}
+{% block page_title %}Dashboard{% endblock %}
+{% block page_subtitle %}<p class="muted">Organisation-wide overview &middot; {{ month_label }}</p>{% endblock %}
+{% block page_actions %}
+  <a class="btn btn-ghost" href="{% url 'project_list' %}">Projects</a>
+  <a class="btn btn-ghost" href="{% url 'admin:index' %}">Django Admin</a>
+  <a class="btn btn-ghost" href="{% url 'reports' %}">Reports</a>
+  <a class="btn btn-primary" href="{% url 'timesheet_create' %}">New timesheet</a>
+{% endblock %}
+
+{% block content %}
+<section class="quick-links" aria-label="Quick links">
+  <a class="quick-link" href="{% url 'project_create' %}"><strong>Add a project</strong><span class="muted small">Create a project and its task checklist to log time against</span></a>
+  <a class="quick-link" href="{% url 'employee_create' %}"><strong>Add an employee</strong><span class="muted small">Create a standard employee account</span></a>
+  <a class="quick-link" href="{% url 'staff_create' %}"><strong>Add a staff account</strong><span class="muted small">Create an administrator who can approve and manage</span></a>
+  <a class="quick-link" href="{% url 'project_list' %}"><strong>Manage projects</strong><span class="muted small">Edit, archive and review project hours</span></a>
+  <a class="quick-link" href="{% url 'admin:index' %}"><strong>Django Admin</strong><span class="muted small">Direct database maintenance and audit log</span></a>
+</section>
+
+<section class="stat-grid" aria-label="Summary">
+  <article class="stat"><p class="stat-label">Total entries</p><p class="stat-value">{{ stats.total_entries }}</p></article>
+  <article class="stat"><p class="stat-label">Active employees</p><p class="stat-value">{{ stats.active_employees }}</p></article>
+  <article class="stat"><p class="stat-label">Total hours recorded</p><p class="stat-value">{{ stats.total_hours|hrs }}</p></article>
+  <article class="stat"><p class="stat-label">Approved hours</p><p class="stat-value">{{ stats.approved_hours|hrs }}</p></article>
+  <article class="stat"><p class="stat-label">Overtime hours</p><p class="stat-value">{{ stats.overtime_hours|hrs }}</p></article>
+  <article class="stat stat-warn"><p class="stat-label">Awaiting approval</p><p class="stat-value">{{ stats.submitted }}</p>
+    <a class="stat-link" href="{% url 'timesheet_list' %}?status=submitted">Review</a></article>
+  <article class="stat"><p class="stat-label">Draft entries</p><p class="stat-value">{{ stats.drafts }}</p>
+    <a class="stat-link" href="{% url 'timesheet_list' %}?status=draft">View</a></article>
+  <article class="stat"><p class="stat-label">Rejected entries</p><p class="stat-value">{{ stats.rejected }}</p>
+    <a class="stat-link" href="{% url 'timesheet_list' %}?status=rejected">View</a></article>
+  <article class="stat"><p class="stat-label">Hours this month</p><p class="stat-value">{{ stats.month_hours|hrs }}</p></article>
+</section>
+
+<div class="grid-2">
+  <section class="card">
+    <div class="card-head"><h2 class="serif">Status distribution</h2><span class="muted small">{{ stats.total_entries }} entr{{ stats.total_entries|pluralize:"y,ies" }}</span></div>
+    {% if stats.total_entries %}
+    <div class="stack-bar" role="img" aria-label="Timesheet status distribution">
+      {% for d in distribution %}{% if d.count %}<span class="seg seg-{{ d.status }}" style="width: {{ d.percent|stringformat:'.1f' }}%" title="{{ d.label }}: {{ d.count }}"></span>{% endif %}{% endfor %}
+    </div>
+    <ul class="legend">
+      {% for d in distribution %}
+      <li><span class="dot seg-{{ d.status }}"></span><span>{{ d.label }}</span><strong>{{ d.count }}</strong><span class="muted small">{{ d.percent }}%</span></li>
+      {% endfor %}
+    </ul>
+    {% else %}
+    <p class="empty-inline">No timesheet entries yet.</p>
+    {% endif %}
+  </section>
+
+  <section class="card">
+    <div class="card-head"><h2 class="serif">Monthly hours</h2><span class="muted small">Last six months</span></div>
+    <div class="bar-chart" data-chart>
+      {% for m in monthly %}
+      <div class="bar-col" title="{{ m.month|date:'F Y' }}: {{ m.total|hrs }} h ({{ m.overtime|hrs }} h overtime)">
+        <span class="bar-value">{{ m.total|hrs }}</span>
+        <div class="bar-track"><div class="bar-fill" data-height="{{ m.percent|stringformat:'.1f' }}" style="height: {{ m.percent|stringformat:'.1f' }}%"><div class="bar-ot" style="height: {% if m.total %}{% widthratio m.overtime m.total 100 %}{% else %}0{% endif %}%"></div></div></div>
+        <span class="bar-label">{{ m.month|date:"M" }}</span>
+      </div>
+      {% endfor %}
+    </div>
+    <p class="muted small chart-note"><span class="dot dot-ot"></span> Darker section = overtime</p>
+  </section>
+</div>
+
+<div class="grid-2">
+  <section class="card">
+    <div class="card-head"><h2 class="serif">Most hours recorded</h2><a class="link" href="{% url 'reports' %}">Full report</a></div>
+    {% if top_employees %}
+    <ol class="rank-list">
+      {% for e in top_employees %}
+      <li>
+        <div class="rank-top"><a href="{% url 'employee_detail' e.employee_id %}">{{ e.name }}</a><span class="muted small">{{ e.code }}</span><strong>{{ e.total|hrs }} h</strong></div>
+        <div class="meter"><span style="width: {{ e.percent|stringformat:'.1f' }}%"></span></div>
+        <span class="muted small">{{ e.overtime|hrs }} h overtime</span>
+      </li>
+      {% endfor %}
+    </ol>
+    {% else %}<p class="empty-inline">No hours have been recorded yet.</p>{% endif %}
+  </section>
+
+  <section class="card">
+    <div class="card-head"><h2 class="serif">Pending approvals</h2>
+      <a class="link" href="{% url 'timesheet_list' %}?status=submitted">View all ({{ stats.submitted }})</a></div>
+    {% if pending %}
+    <ul class="pending-list">
+      {% for e in pending %}
+      <li>
+        <div class="pending-main">
+          <a href="{% url 'timesheet_detail' e.pk %}"><strong>{{ e.employee_name }}</strong></a>
+          <span class="muted small">{{ e.work_date|date:"D j M" }} &middot; {{ e.total_hours|hrs }} h{% if e.project %} &middot; {{ e.project.name }}{% endif %}</span>
+        </div>
+        {% url 'dashboard' as next_url %}
+        {% include "partials/_review_actions.html" with entry=e next_url=next_url %}
+      </li>
+      {% endfor %}
+    </ul>
+    {% else %}<p class="empty-inline">Nothing is waiting for review. </p>{% endif %}
+  </section>
+</div>
+
+<section class="card">
+  <div class="card-head"><h2 class="serif">Recent activity</h2><a class="link" href="{% url 'timesheet_list' %}">All timesheets</a></div>
+  {% if recent %}
+  <div class="table-wrap">
+    <table class="table">
+      <thead><tr>
+        <th>Employee</th><th>Work date</th><th>Project</th><th>Task</th>
+        <th class="num">Regular</th><th class="num">Overtime</th><th>Status</th><th>Created</th><th>Actions</th>
+      </tr></thead>
+      <tbody>
+      {% for e in recent %}
+      <tr>
+        <td><a href="{% url 'timesheet_detail' e.pk %}"><strong>{{ e.employee_name }}</strong></a><br><span class="muted small">{{ e.employee_code|default:"-" }}</span></td>
+        <td>{{ e.work_date|date:"j M Y" }}</td>
+        <td>{{ e.project_label|default:"-" }}</td>
+        <td class="task-cell">{{ e.task_description|truncatechars:70 }}</td>
+        <td class="num">{{ e.regular_hours|hrs }}</td>
+        <td class="num">{{ e.overtime_hours|hrs }}</td>
+        <td>{% status_badge e.status %}</td>
+        <td class="muted small">{{ e.created_at|date:"j M Y, H:i" }}</td>
+        <td class="row-actions">
+          <a class="btn btn-ghost btn-sm" href="{% url 'timesheet_detail' e.pk %}">View</a>
+          <a class="btn btn-ghost btn-sm" href="{% url 'timesheet_edit' e.pk %}">Edit</a>
+        </td>
+      </tr>
+      {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% else %}
+  <div class="empty"><p>No timesheet entries have been recorded yet.</p><a class="btn btn-primary" href="{% url 'timesheet_create' %}">Create the first entry</a></div>
+  {% endif %}
+</section>
+
+<section class="card">
+  <div class="card-head"><h2 class="serif">Recent changes and submissions</h2><span class="muted small">From the audit log</span></div>
+  {% if recent_changes %}
+  <ul class="activity-list">
+    {% for log in recent_changes %}
+    <li>
+      <span class="activity-time">{{ log.timestamp|date:"j M, H:i" }}</span>
+      <span><strong>{{ log.actor_username|default:"Unknown" }}</strong> &middot; {{ log.get_action_display }}{% if log.object_repr and log.model_name != "User" %} &middot; <span class="muted">{{ log.object_repr }}</span>{% endif %}</span>
+    </li>
+    {% endfor %}
+  </ul>
+  {% else %}<p class="empty-inline">No activity has been logged yet.</p>{% endif %}
+</section>
+{% endblock %}

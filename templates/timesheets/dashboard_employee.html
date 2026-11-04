@@ -1,0 +1,69 @@
+{% extends "base.html" %}
+{% load ts_extras %}
+{% block title %}My dashboard{% endblock %}
+{% block page_title %}Hello, {{ user.first_name|default:user.username }}{% endblock %}
+{% block page_subtitle %}<p class="muted">Your hours at a glance &middot; {{ month_label }}</p>{% endblock %}
+{% block page_actions %}
+  <a class="btn btn-ghost" href="{% url 'timesheet_list' %}">My timesheets</a>
+  <a class="btn btn-primary" href="{% url 'timesheet_create' %}">New timesheet</a>
+{% endblock %}
+
+{% block content %}
+<section class="stat-grid" aria-label="My summary">
+  <article class="stat"><p class="stat-label">This week</p><p class="stat-value">{{ stats.week_hours|hrs }}</p><p class="muted small">{{ week_start|date:"j M" }} &ndash; {{ week_end|date:"j M" }}</p></article>
+  <article class="stat"><p class="stat-label">Time in lieu balance</p><p class="stat-value">{{ til_balance|hrs }}</p><a class="stat-link" href="{% url 'til_overview' %}">View ledger</a></article>
+  <article class="stat"><p class="stat-label">This month</p><p class="stat-value">{{ stats.month_hours|hrs }}</p></article>
+  <article class="stat"><p class="stat-label">Regular hours (all time)</p><p class="stat-value">{{ stats.regular|hrs }}</p></article>
+  <article class="stat"><p class="stat-label">Overtime hours (all time)</p><p class="stat-value">{{ stats.overtime|hrs }}</p></article>
+  <article class="stat"><p class="stat-label">Approved hours</p><p class="stat-value">{{ stats.approved_hours|hrs }}</p></article>
+  <article class="stat"><p class="stat-label">Drafts</p><p class="stat-value">{{ stats.drafts }}</p><a class="stat-link" href="{% url 'timesheet_list' %}?status=draft">View</a></article>
+  <article class="stat stat-warn"><p class="stat-label">Awaiting approval</p><p class="stat-value">{{ stats.submitted }}</p><a class="stat-link" href="{% url 'timesheet_list' %}?status=submitted">View</a></article>
+  <article class="stat"><p class="stat-label">Approved entries</p><p class="stat-value">{{ stats.approved }}</p></article>
+  <article class="stat"><p class="stat-label">Rejected</p><p class="stat-value">{{ stats.rejected }}</p><a class="stat-link" href="{% url 'timesheet_list' %}?status=rejected">View</a></article>
+</section>
+
+{% if needs_attention %}
+<section class="card">
+  <div class="card-head"><h2 class="serif">Needs your attention</h2><span class="muted small">Drafts and rejected entries</span></div>
+  <ul class="pending-list">
+    {% for e in needs_attention %}
+    <li>
+      <div class="pending-main">
+        <a href="{% url 'timesheet_detail' e.pk %}"><strong>{{ e.work_date|date:"D j M Y" }}</strong></a>
+        <span class="muted small">{{ e.total_hours|hrs }} h{% if e.project %} &middot; {{ e.project.name }}{% endif %}</span>
+        {% if e.status == 'rejected' and e.rejection_reason %}<span class="reason">Reason: {{ e.rejection_reason }}</span>{% endif %}
+      </div>
+      <div class="review-actions">{% status_badge e.status %}
+        <a class="btn btn-ghost btn-sm" href="{% url 'timesheet_edit' e.pk %}">Edit</a></div>
+    </li>
+    {% endfor %}
+  </ul>
+</section>
+{% endif %}
+
+<section class="card">
+  <div class="card-head"><h2 class="serif">Recent entries</h2><a class="link" href="{% url 'timesheet_list' %}">Full history</a></div>
+  {% if recent %}
+  <div class="table-wrap">
+    <table class="table">
+      <thead><tr><th>Work date</th><th>Project</th><th>Task</th><th class="num">Regular</th><th class="num">Overtime</th><th>Status</th><th></th></tr></thead>
+      <tbody>
+      {% for e in recent %}
+      <tr>
+        <td><a href="{% url 'timesheet_detail' e.pk %}">{{ e.work_date|date:"D j M Y" }}</a></td>
+        <td>{{ e.project_label|default:"-" }}</td>
+        <td class="task-cell">{{ e.task_description|truncatechars:70 }}</td>
+        <td class="num">{{ e.regular_hours|hrs }}</td>
+        <td class="num">{{ e.overtime_hours|hrs }}</td>
+        <td>{% status_badge e.status %}</td>
+        <td class="row-actions"><a class="btn btn-ghost btn-sm" href="{% url 'timesheet_detail' e.pk %}">View</a></td>
+      </tr>
+      {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% else %}
+  <div class="empty"><p>You have not recorded any time yet.</p><a class="btn btn-primary" href="{% url 'timesheet_create' %}">Add your first timesheet</a></div>
+  {% endif %}
+</section>
+{% endblock %}
